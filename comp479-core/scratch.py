@@ -16,3 +16,7 @@ tag = 'TEXT'
 body_regex = re.compile('<'+tag+'.*?>.*?</'+tag+'>', flags=re.DOTALL)
 results = re.findall(body_regex, data)
 print len(results)
+"""
+Install punkt package from nltk to be able to tokenize english
+"""
+print nltk.word_tokenize(results[0])[:100]
