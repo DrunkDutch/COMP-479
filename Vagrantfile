@@ -65,7 +65,7 @@ Vagrant.configure("2") do |config|
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<-SHELL
     # apt-get update
-    # sudo apt install -y python3-pip python-pip
+    sudo apt install -y python3-pip python-pip
     sudo pip3 install numpy nltk
     sudo pip install numpy nltk
   SHELL
