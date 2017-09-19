@@ -1,8 +1,18 @@
 import numpy
 import nltk
 import os
+import re
 
-
+corpus = []
 for file in os.listdir("./../Corpus"):
     if file.endswith(".sgm"):
-        print(os.path.join("./../Corpus", file))
+        result = os.path.join("./../Corpus", file)
+        print(result)
+        corpus.append(result)
+
+with open(corpus[0], 'r') as myfile:
+    data = myfile.read()
+tag = 'TEXT'
+body_regex = re.compile('<'+tag+'.*?>.*?</'+tag+'>', flags=re.DOTALL)
+results = re.findall(body_regex, data)
+print len(results)
