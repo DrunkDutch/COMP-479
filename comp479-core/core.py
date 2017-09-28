@@ -4,11 +4,34 @@ import os
 import re
 import collections
 import string
-import heapq
+import pickle
+import datetime
+import sys
+# reload(sys)
+# sys.setdefaultencoding('utf8')
 
 
 # TODO: Look into wrapping the tag parser into a helper function for refined parsing
 # TODO: Create wrapper class to hold the parsed text from above function
+
+class Corpus:
+
+    def __init__(self, source):
+        self.path = source
+        self.files = [os.path.join(self.path, file) for file in os.listdir("./../Corpus") if file.endswith(".sgm")]
+        self.documents = [doc for doc in self.parse_documents()]
+        # self.save()
+
+    def parse_documents(self):
+        for file in self.files:
+            print "Currently parsing articles from file {}", file
+            with open(file, 'rb') as myfile:
+                data = myfile.read()
+            for article in Document.parse_tags("REUTERS", data, False):
+                    yield Document(article)
+    def save(self):
+        with open("corpus.pk1", 'wb') as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
 
 class Document:
@@ -80,15 +103,18 @@ class Document:
         text.extend(self.topics_places)
         for section in text:
             for word in nltk.word_tokenize(section):
-                stemmed_word = stemmer.stem(word)
-                if not isinstance(stemmed_word, unicode):
-                    stemmed_word = unicode(stemmed_word, "utf-8")
-                if stemmed_word in count_list.keys():
-                    count_list[stemmed_word] = count_list[stemmed_word] + 1
-                else:
-                    count_list[stemmed_word] = 1
-                if stemmed_word not in token_list:
-                    token_list[stemmed_word] = self.id
+                try:
+                    stemmed_word = stemmer.stem(word)
+                    if not isinstance(stemmed_word, unicode):
+                        stemmed_word = unicode(stemmed_word, "utf-8")
+                    if stemmed_word in count_list.keys():
+                        count_list[stemmed_word] = count_list[stemmed_word] + 1
+                    else:
+                        count_list[stemmed_word] = 1
+                    if stemmed_word not in token_list:
+                        token_list[stemmed_word] = self.id
+                except UnicodeDecodeError:
+                    token_list[word.split(".")[0]] = self.id
         cleaned = self.cleanup(token_list)
         sort = sorted(cleaned.items())
         tokens = collections.OrderedDict(sort)
@@ -101,17 +127,28 @@ for file in os.listdir("./../Corpus"):
         result = os.path.join("./../Corpus", file)
         corpus.append(result)
 
-with open(corpus[0], 'r') as myfile:
+with open(corpus[17], 'r') as myfile:
     data = myfile.read()
 
-print len(Document.parse_tags("REUTERS", data, False))
-documents = []
-for article in Document.parse_tags("REUTERS", data, False):
-    documents.append(Document(article))
-    print documents[-1].id
+# print len(Document.parse_tags("REUTERS", data, False))
+# documents = []
+# for article in Document.parse_tags("REUTERS", data, False):
+#     documents.append(Document(article))
+#     print documents[-1].id
 
+# try:
+#     with open('corpus.pkl', 'rb') as input:
+#         corpus = pickle.load(input)
+# except IOError:
+#     corpus = Corpus("./../Corpus")
+# finally:
+#     print len(corpus.documents)
 """
 Install punkt package from nltk to be able to tokenize english
 install stopwords corpus for nltk to remove stopwords
 """
+now = datetime.datetime.now()
+corpus = Corpus("./../Corpus")
+print len(corpus.documents)
 
+print datetime.datetime.now() - now
