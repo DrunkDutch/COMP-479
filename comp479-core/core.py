@@ -4,28 +4,20 @@ import os
 import re
 import collections
 import string
+import heapq
 
 
 # TODO: Look into wrapping the tag parser into a helper function for refined parsing
 # TODO: Create wrapper class to hold the parsed text from above function
 
-corpus = []
-for file in os.listdir("./../Corpus"):
-    if file.endswith(".sgm"):
-        result = os.path.join("./../Corpus", file)
-        corpus.append(result)
-
-with open(corpus[0], 'r') as myfile:
-    data = myfile.read()
-
 
 class Document:
 
-    def __init__(self, source):
-        self.raw = self.parse_tags("REUTERS", source, False)[0]
+    def __init__(self, source, index=0):
+        self.raw = self.parse_tags("REUTERS", source, False)[index]
         self.id = self.get_id()
         self.topics_places = self.parse_tags("D", self.raw)
-        self.text = self.parse_tags("TEXT", self.raw)[0]
+        self.text = self.parse_tags("TEXT", self.raw, False)[0]
         self.title = self.parse_tags("TITLE", self.text)[0]
         self.dateline = self.parse_tags("DATELINE", self.text)[0]
         self.body = self.get_body()
@@ -38,12 +30,19 @@ class Document:
     """
     @staticmethod
     def parse_tags(tag, source, strict=True):
-        if strict:
-            body_regex = re.compile('(?<=\<'+tag+'>).*?(?=\</'+tag+'>)', flags=re.DOTALL)
-        else:
-            body_regex = re.compile('<' + tag + '.*?>.*?</' + tag + '>', flags=re.DOTALL)
-        results = re.findall(body_regex, source)
-        return results
+        results = []
+        try:
+            if strict:
+                body_regex = re.compile('(?<=\<'+tag+'>).*?(?=\</'+tag+'>)', flags=re.DOTALL)
+            else:
+                body_regex = re.compile('<' + tag + '.*?>.*?</' + tag + '>', flags=re.DOTALL)
+            results = re.findall(body_regex, source)
+            if len(results) is 0:
+                results = [""]
+        except IndexError:
+            results = [""]
+        finally:
+            return results
 
     def get_id(self):
         regex = re.compile("(?<=NEWID=\")\d+")
@@ -57,14 +56,17 @@ class Document:
     def get_body(self):
         if self.text.find("<BODY>") != -1:
             return self.text.split("</DATELINE>")[1].split("</BODY>")[0].replace("<BODY>", '')
-        else:
+        if self.text.find("<DATELINE>") != -1:
             return self.text.split("</DATELINE>")[1].split("</TEXT>")[0]
+        if self.text.find("<TITLE>") != -1:
+            return self.text.split("</TITLE>")[1].split("</TEXT>")[0]
+        else:
+            return self.text.split("</TEXT>")[0]
 
     def cleanup(self, input):
         dicts = {}
         punction = [unicode(x, "utf-8") for x in string.punctuation]
         stops = set(nltk.corpus.stopwords.words('english') + punction)
-        print stops
         for key in input.keys():
             if key not in stops:
                 dicts[key] = self.id
@@ -88,16 +90,28 @@ class Document:
                 if stemmed_word not in token_list:
                     token_list[stemmed_word] = self.id
         cleaned = self.cleanup(token_list)
-        return sorted(cleaned.items()), collections.OrderedDict(sorted(count_list.items()))
+        sort = sorted(cleaned.items())
+        tokens = collections.OrderedDict(sort)
+        return sort, collections.OrderedDict(sorted(count_list.items()))
 
 
-first_pass = Document(data)
+corpus = []
+for file in os.listdir("./../Corpus"):
+    if file.endswith(".sgm"):
+        result = os.path.join("./../Corpus", file)
+        corpus.append(result)
+
+with open(corpus[0], 'r') as myfile:
+    data = myfile.read()
+
+print len(Document.parse_tags("REUTERS", data, False))
+documents = []
+for article in Document.parse_tags("REUTERS", data, False):
+    documents.append(Document(article))
+    print documents[-1].id
+
 """
 Install punkt package from nltk to be able to tokenize english
 install stopwords corpus for nltk to remove stopwords
 """
 
-
-print first_pass.title
-print first_pass.id
-print first_pass.tokens
