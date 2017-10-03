@@ -11,8 +11,7 @@ import sys
 # sys.setdefaultencoding('utf8')
 
 
-# TODO: Look into wrapping the tag parser into a helper function for refined parsing
-# TODO: Create wrapper class to hold the parsed text from above function
+# TODO: Make Stemmer and stopwords optional based on arguments
 
 class Corpus:
 
@@ -116,9 +115,7 @@ class Document:
                 except UnicodeDecodeError:
                     token_list[word.split(".")[0]] = self.id
         cleaned = self.cleanup(token_list)
-        sort = sorted(cleaned.items())
-        tokens = collections.OrderedDict(sort)
-        return sort, collections.OrderedDict(sorted(count_list.items()))
+        return cleaned, collections.OrderedDict(sorted(count_list.items()))
 
 
 corpus = []
@@ -150,5 +147,7 @@ install stopwords corpus for nltk to remove stopwords
 now = datetime.datetime.now()
 corpus = Corpus("./../Corpus")
 print len(corpus.documents)
+print corpus.documents[0].tokens
+print corpus.tokens[0:20]
 
 print datetime.datetime.now() - now
