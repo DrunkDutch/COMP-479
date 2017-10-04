@@ -28,6 +28,7 @@ class Corpus:
                 data = myfile.read()
             for article in Document.parse_tags("REUTERS", data, False):
                     yield Document(article)
+
     def save(self):
         with open("corpus.pk1", 'wb') as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
@@ -148,6 +149,6 @@ now = datetime.datetime.now()
 corpus = Corpus("./../Corpus")
 print len(corpus.documents)
 print corpus.documents[0].tokens
-print corpus.tokens[0:20]
+
 
 print datetime.datetime.now() - now
