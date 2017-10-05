@@ -17,7 +17,7 @@ class Corpus:
 
     def __init__(self, source):
         self.path = source
-        self.files = [os.path.join(self.path, file) for file in os.listdir("./../Corpus") if file.endswith(".sgm")]
+        self.files = [os.path.join(self.path, file) for file in os.listdir(self.path) if file.endswith(".sgm")]
         self.documents = [doc for doc in self.parse_documents()]
         # self.save()
 
@@ -118,15 +118,19 @@ class Document:
         cleaned = self.cleanup(token_list)
         return cleaned, collections.OrderedDict(sorted(count_list.items()))
 
+    def get_tokens(self):
+        for token, docid in self.tokens.iteritems():
+            yield token, docid
 
-corpus = []
-for file in os.listdir("./../Corpus"):
-    if file.endswith(".sgm"):
-        result = os.path.join("./../Corpus", file)
-        corpus.append(result)
 
-with open(corpus[17], 'r') as myfile:
-    data = myfile.read()
+# corpus = []
+# for file in os.listdir("./../Corpus"):
+#     if file.endswith("0.sgm"):
+#         result = os.path.join("./../Corpus", file)
+#         corpus.append(result)
+#
+# with open(corpus[17], 'r') as myfile:
+#     data = myfile.read()
 
 # print len(Document.parse_tags("REUTERS", data, False))
 # documents = []
@@ -145,10 +149,10 @@ with open(corpus[17], 'r') as myfile:
 Install punkt package from nltk to be able to tokenize english
 install stopwords corpus for nltk to remove stopwords
 """
-now = datetime.datetime.now()
-corpus = Corpus("./../Corpus")
-print len(corpus.documents)
-print corpus.documents[0].tokens
 
-
-print datetime.datetime.now() - now
+if __name__ == "__main__":
+    now = datetime.datetime.now()
+    corpus = Corpus("./../Corpus")
+    print len(corpus.documents)
+    print corpus.documents[0].tokens
+    print datetime.datetime.now() - now
