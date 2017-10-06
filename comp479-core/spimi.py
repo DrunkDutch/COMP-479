@@ -1,10 +1,11 @@
 import core
 import sys
 import os
+import datetime
 
 
 class Inverter:
-    def __init__(self, corpus, block_prefix="bl_", file_prefix="f_", block_size=1, block_index=0, out_dir="../output"):
+    def __init__(self, corpus, block_prefix="bl_", file_prefix="f_", block_size=1, block_index=0, out_dir="./blockfiles"):
         self.documents = corpus.documents
         self.tokens = self.get_tokens()
         self.block_prefix = block_prefix
@@ -53,7 +54,10 @@ class Inverter:
             self.blocklist.append(block_name)
 
 
-corp = core.Corpus("./../Corpus")
-invert = Inverter(corp)
-invert.index()
+if __name__ == "__main__":
+    now = datetime.datetime.now()
+    corp = core.Corpus("./../Corpus")
+    invert = Inverter(corp)
+    invert.index()
+    print datetime.datetime.now() - now
 
