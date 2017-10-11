@@ -123,6 +123,55 @@ class Document:
             yield token, docid
 
 
+class BlockLine:
+    def __init__(self, indexes, term, postings):
+        self.indexes = indexes
+        self.term = term
+        self.postings = postings
+
+    @classmethod
+    def from_line_entry(cls, indexes, line):
+        split_line = line.split(" ")
+        return cls(indexes, split_line[0], [int(doc_id) for doc_id in split_line[1:]])
+
+    def merge(self, other_bl):
+        new_indexes = sorted(self.indexes + other_bl.indexes)
+        new_postings = sorted(self.postings + other_bl.postings)
+        return BlockLine(new_indexes, self.term, new_postings)
+
+    def __str__(self):
+
+        return "{} {}\n".format(self.term, " ".join([str(doc_id) for doc_id in self.postings]))
+
+
+class BlockFile:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.file_handle = None
+        self.term_count = 0
+
+    def open_file(self, mode='r'):
+        self.file_handle = open(self.file_path, mode)
+        return self
+
+    def write_line(self, line_obj):
+        self.file_handle.write(str(line_obj))
+        self.term_count += 1
+
+    def read_line(self):
+        line_string = self.file_handle.readline()
+        if line_string:
+            return BlockLine.from_line_entry(-1, line_string)
+        else:
+            return None
+
+    def close_file(self):
+        self.file_handle.close()
+
+    def __str__(self):
+        return str(self.file_path)
+
+
 # corpus = []
 # for file in os.listdir("./../Corpus"):
 #     if file.endswith("0.sgm"):

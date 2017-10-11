@@ -16,6 +16,7 @@ class Inverter:
         self.blocklist = []
         self.get_out_dir()
 
+
     def get_tokens(self):
         for document in self.documents:
             try:
@@ -32,7 +33,7 @@ class Inverter:
         while not done:
             block_dict = {}
             try:
-                while sys.getsizeof(block_dict) / 1024 / 1024 <= self.block_size:
+                while sys.getsizeof(block_dict) / 1024 / 64 <= self.block_size:
                     token = self.tokens.next()
                     if token[0] not in block_dict:
                         block_dict[token[0]] = list()
@@ -45,27 +46,30 @@ class Inverter:
 
             sorted_block = [term for term in sorted(block_dict.keys())]
             block_name = self.block_prefix + str(self.block_index) + ".txt"
-            with open(os.path.join(self.out_dir, block_name), 'w') as outFile:
-                for element in sorted_block:
-                    docids = " ".join(str(doc) for doc in block_dict[element])
-                    outString = element + " " + docids
-                    outFile.write(outString + "\n")
+            outFile = core.BlockFile(os.path.join(self.out_dir, block_name))
+            outFile.open(mode="w")
+            for element in sorted_block:
+                docids = " ".join(str(doc) for doc in block_dict[element])
+                outString = element + " " + docids
+                outFile.write_line(outString + "\n")
+            outFile.close()
             self.block_index += 1
             self.blocklist.append(os.path.join(self.out_dir, block_name))
 
 
 class Merger:
-    def __init__(self, blockfiles, file_name="mf_", out_dir="./merged"):
+    def __init__(self, blockfiles, file_name="mf.txt", out_dir="./merged"):
         self.file_name = file_name
         self.out_dir = out_dir
         self.block_files = blockfiles
         self.get_out_dir()
         self.prep_output()
+        self.out_file = core.BlockFile(os.path.join(self.out_dir, self.file_name))
 
     def prep_files(self):
         open_files = []
         for out_file in self.block_files:
-            open_files.append(open(out_file, "r"))
+            open_files.append(core.BlockFile(out_file))
         return open_files
 
     def prep_output(self):
@@ -83,58 +87,69 @@ class Merger:
         new_postings = []
         new_postings.extend(dic1)
         new_postings.extend(dic2)
-        return sorted(new_postings)
+        return sorted(set(new_postings))
+
+    def merge_indexes(self, indexes, index):
+        new_indexes = []
+        new_indexes.extend(indexes)
+        new_indexes.append(index)
+        return sorted(set(new_indexes))
 
     def merge(self):
-        in_files = self.prep_files()
-        next_lines = [f.readline() for f in in_files]
+        in_files = [f.open_file() for f in self.prep_files()]
+        next_lines = [f.read_line() for f in in_files]
+        self.out_file.open_file(mode="w")
         while next_lines:
-            next_term = None
-            postings = []
-            indexes = []
+            next_term = core.BlockLine(list(), None, list())
             for index, line in enumerate(next_lines):
-                term = line.split(" ")[0]
-                docIds = [int(docId) for docId in line.split(" ")[1:]]
-                if not next_term:
-                    indexes.append(index)
-                    next_term = term
-                    postings = docIds
-                elif term == next_term:
-                    indexes.append(index)
-                    postings = self.merge_posting(postings, docIds)
-                elif term < next_term:
-                    indexes = [index]
-                    next_term = term
-                    postings = docIds
+                line_obj = line
+                line_obj.indexes = [index]
+                if next_term.term is None:
+                    next_term = line_obj
+                elif line_obj.term == next_term.term:
+                    next_term = line_obj.merge(next_term)
+                elif line_obj.term < next_term.term:
+                    next_term = line_obj
 
             # TODO: FIX file indexing to close the proper file
-            next_posting = " ".join(str(doc) for doc in postings)
-            out_string = next_term + " " + next_posting
-            with open(os.path.join(self.out_dir, self.file_name), 'a') as outFile:
-                outFile.write(out_string + "\n")
-            new_next_lines = [in_files[index].readline() for index in indexes]
-
+            self.out_file.write_line(next_term)
+            new_indexes = next_term.indexes
+            new_next_lines = [in_files[index].read_line() for index in new_indexes]
+            offset = 0  # Create offset for indexes for when looping over the new lines read to ensure that indexes are aligned after deletion
             for index, new_line in enumerate(new_next_lines):
                 try:
-                    if not new_line:
-                        del next_lines[indexes[index]]
-                        in_files[indexes[index]].close()
-                        print "Closing file" + str(indexes[index])
-                        del in_files[indexes[index]]
+                    if new_line is None:
+                        del(next_lines[new_indexes[index]])
+                        print "Closing file " + str(in_files[new_indexes[index]])
+                        in_files[new_indexes[index]].close_file()
+                        del(in_files[new_indexes[index]])
+                        offset += 1
                     else:
-                        next_lines[indexes[index]] = new_line
+                        print "Setting new line for index {}".format(new_indexes[index-offset])
+                        print new_indexes
+                        print[str(f) for f in in_files]
+                        next_lines[new_indexes[index-offset]] = new_line
                 except IndexError:
+                    print "{} EXCEPTION with size {}".format(new_line, len(next_lines))
                     continue
+        self.out_file.close_file()
+        for f in in_files:
+            try:
+                f.close_file()
+            except Exception:
+                continue
 
         print "Finished merging files"
 
 
 if __name__ == "__main__":
     now = datetime.datetime.now()
-    corp = core.Corpus("./../Corpus")
-    invert = Inverter(corp)
-    invert.index()
-    merger = Merger(invert.blocklist)
+    print os.listdir("./blockfiles")
+    bfiles = [os.path.join("./blockfiles", file) for file in sorted(os.listdir("./blockfiles"))]
+    # corp = core.Corpus("./../Corpus")
+    # invert = Inverter(corp)
+    # invert.index()
+    merger = Merger(bfiles)
     merger.merge()
     print datetime.datetime.now() - now
 
