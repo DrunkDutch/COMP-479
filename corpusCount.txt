@@ -1,0 +1,2 @@
+Corpus Term count
+Full Compression = 1813690

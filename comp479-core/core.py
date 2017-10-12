@@ -19,7 +19,14 @@ class Corpus:
         self.path = source
         self.files = [os.path.join(self.path, file) for file in os.listdir(self.path) if file.endswith(".sgm")]
         self.documents = [doc for doc in self.parse_documents()]
+        self.count = self.get_count()
         # self.save()
+
+    def get_count(self):
+        count = 0
+        for doc in self.documents:
+            count += doc.count
+        return count
 
     def parse_documents(self):
         for file in self.files:
@@ -36,7 +43,7 @@ class Corpus:
 
 class Document:
 
-    def __init__(self, source, index=0):
+    def __init__(self, source, index=0, case=True, digits=True, stop=True, stem=True):
         self.raw = self.parse_tags("REUTERS", source, False)[index]
         self.id = self.get_id()
         self.topics_places = self.parse_tags("D", self.raw)
@@ -44,7 +51,13 @@ class Document:
         self.title = self.parse_tags("TITLE", self.text)[0]
         self.dateline = self.parse_tags("DATELINE", self.text)[0]
         self.body = self.get_body()
+        self.case = case
+        self.digits = digits
+        self.stop = stop
+        self.stem = stem
+        self.count = 0
         self.tokens, self.occurence = self.tokenize()
+
 
     """
     Parser function to find the information contained within the desired tags
@@ -95,6 +108,24 @@ class Document:
                 dicts[key] = self.id
         return dicts
 
+    def clean(self, input):
+        output = input
+        if self.digits:
+            for s in output:
+                if s.isdigit():
+                    return None
+        if self.case:
+            output = output.lower()
+        if self.stop:
+            punctuation = [unicode(x, "utf-8") for x in string.punctuation]
+            stops = set(nltk.corpus.stopwords.words('english') + punctuation)
+            if output in stops:
+                return None
+        if self.stem:
+            stemmer = nltk.PorterStemmer()
+            output = stemmer.stem(output)
+        return output
+
     def tokenize(self):
         token_list = {}
         stemmer = nltk.PorterStemmer()
@@ -104,7 +135,9 @@ class Document:
         for section in text:
             for word in nltk.word_tokenize(section):
                 try:
-                    stemmed_word = stemmer.stem(word)
+                    stemmed_word = self.clean(word)
+                    if stemmed_word is None:
+                        continue
                     if not isinstance(stemmed_word, unicode):
                         stemmed_word = unicode(stemmed_word, "utf-8")
                     if stemmed_word in count_list.keys():
@@ -113,9 +146,11 @@ class Document:
                         count_list[stemmed_word] = 1
                     if stemmed_word not in token_list:
                         token_list[stemmed_word] = self.id
+                    self.count += 1
                 except UnicodeDecodeError:
                     token_list[word.split(".")[0]] = self.id
-        cleaned = self.cleanup(token_list)
+                    self.count += 1
+        cleaned = token_list
         return cleaned, collections.OrderedDict(sorted(count_list.items()))
 
     def get_tokens(self):

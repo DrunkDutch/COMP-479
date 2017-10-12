@@ -33,7 +33,7 @@ class Inverter:
         while not done:
             block_dict = {}
             try:
-                while sys.getsizeof(block_dict) / 1024 / 27 <= self.block_size:
+                while sys.getsizeof(block_dict) / 1024 / 30 <= self.block_size:
                     token = self.tokens.next()
                     if token[0] not in block_dict:
                         block_dict[token[0]] = list()
@@ -144,9 +144,10 @@ class Merger:
 
 if __name__ == "__main__":
     now = datetime.datetime.now()
-    print os.listdir("./blockfiles")
+    # print os.listdir("./blockfiles")
     # bfiles = [os.path.join("./blockfiles", file) for file in sorted(os.listdir("./blockfiles"))]
     corp = core.Corpus("./../Corpus")
+    print corp.count
     invert = Inverter(corp)
     invert.index()
     merger = Merger(invert.blocklist)
