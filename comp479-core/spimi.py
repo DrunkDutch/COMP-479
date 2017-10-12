@@ -33,7 +33,7 @@ class Inverter:
         while not done:
             block_dict = {}
             try:
-                while sys.getsizeof(block_dict) / 1024 / 64 <= self.block_size:
+                while sys.getsizeof(block_dict) / 1024 / 27 <= self.block_size:
                     token = self.tokens.next()
                     if token[0] not in block_dict:
                         block_dict[token[0]] = list()
@@ -47,12 +47,12 @@ class Inverter:
             sorted_block = [term for term in sorted(block_dict.keys())]
             block_name = self.block_prefix + str(self.block_index) + ".txt"
             outFile = core.BlockFile(os.path.join(self.out_dir, block_name))
-            outFile.open(mode="w")
+            outFile.open_file(mode="w")
             for element in sorted_block:
                 docids = " ".join(str(doc) for doc in block_dict[element])
                 outString = element + " " + docids
                 outFile.write_line(outString + "\n")
-            outFile.close()
+            outFile.close_file()
             self.block_index += 1
             self.blocklist.append(os.path.join(self.out_dir, block_name))
 
@@ -119,15 +119,15 @@ class Merger:
             for index, new_line in enumerate(new_next_lines):
                 try:
                     if new_line is None:
-                        del(next_lines[new_indexes[index]])
-                        print "Closing file " + str(in_files[new_indexes[index]])
-                        in_files[new_indexes[index]].close_file()
-                        del(in_files[new_indexes[index]])
+                        del(next_lines[new_indexes[index-offset]])
+                        print "Closing file " + str(in_files[new_indexes[index-offset]])
+                        in_files[new_indexes[index-offset]].close_file()
+                        del(in_files[new_indexes[index-offset]])
                         offset += 1
                     else:
-                        print "Setting new line for index {}".format(new_indexes[index-offset])
-                        print new_indexes
-                        print[str(f) for f in in_files]
+                        # print "Setting new line for index {}".format(new_indexes[index-offset])
+                        # print new_indexes
+                        # print[str(f) for f in in_files]
                         next_lines[new_indexes[index-offset]] = new_line
                 except IndexError:
                     print "{} EXCEPTION with size {}".format(new_line, len(next_lines))
@@ -145,11 +145,11 @@ class Merger:
 if __name__ == "__main__":
     now = datetime.datetime.now()
     print os.listdir("./blockfiles")
-    bfiles = [os.path.join("./blockfiles", file) for file in sorted(os.listdir("./blockfiles"))]
-    # corp = core.Corpus("./../Corpus")
-    # invert = Inverter(corp)
-    # invert.index()
-    merger = Merger(bfiles)
+    # bfiles = [os.path.join("./blockfiles", file) for file in sorted(os.listdir("./blockfiles"))]
+    corp = core.Corpus("./../Corpus")
+    invert = Inverter(corp)
+    invert.index()
+    merger = Merger(invert.blocklist)
     merger.merge()
     print datetime.datetime.now() - now
 
