@@ -16,7 +16,6 @@ class Inverter:
         self.blocklist = []
         self.get_out_dir()
 
-
     def get_tokens(self):
         for document in self.documents:
             try:

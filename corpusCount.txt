@@ -1,2 +1,3 @@
 Corpus Term count
 Full Compression = 1813690
+All but Digit = 1993678
