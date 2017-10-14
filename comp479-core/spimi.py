@@ -2,10 +2,11 @@ import core
 import sys
 import os
 import datetime
+import argparse
 
 
 class Inverter:
-    def __init__(self, corpus, block_prefix="bl_", file_prefix="f_", block_size=1, block_index=0, out_dir="./blockfiles"):
+    def __init__(self, corpus, block_prefix="bl_", file_prefix="f_", block_size=100, block_index=0, out_dir="./blockfiles"):
         self.documents = corpus.documents
         self.tokens = self.get_tokens()
         self.block_prefix = block_prefix
@@ -32,7 +33,7 @@ class Inverter:
         while not done:
             block_dict = {}
             try:
-                while sys.getsizeof(block_dict) / 1024 / 30 <= self.block_size:
+                while sys.getsizeof(block_dict) / 1024 <= self.block_size:
                     token = self.tokens.next()
                     if token[0] not in block_dict:
                         block_dict[token[0]] = list()
@@ -141,13 +142,36 @@ class Merger:
         print "Finished merging files"
 
 
+def get_command_line(argv=None):
+    program_name = os.path.basename(sys.argv[0])
+    if argv is None:
+        argv = sys.argv[1:]
+
+    try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-d", "--digits", action="store_true")
+        parser.add_argument("-c", "--case", action="store_true")
+        parser.add_argument("-s", "--stopwords", action="store_true")
+        parser.add_argument("-m", "--stemmer", action="store_true")
+        parser.add_argument("-S", "--size", type=int)
+        arguments = parser.parse_args(argv)
+        return arguments
+
+    except Exception as e:
+        indent = len(program_name) * " "
+        sys.stderr.write(program_name + ": " + repr(e) + "\n")
+        sys.stderr.write(indent + " for help use --help")
+        return None
+
+
 if __name__ == "__main__":
     now = datetime.datetime.now()
+    options = get_command_line()
     # print os.listdir("./blockfiles")
     # bfiles = [os.path.join("./blockfiles", file) for file in sorted(os.listdir("./blockfiles"))]
-    corp = core.Corpus("./../Corpus")
-    print corp.count
-    invert = Inverter(corp)
+    corp = core.Corpus("./../Corpus", case=options.case, digits=options.digits, stem=options.stemmer, stop=options.stopwords)
+    # print corp.get_count()
+    invert = Inverter(corp, block_size=options.size)
     invert.index()
     merger = Merger(invert.blocklist)
     merger.merge()

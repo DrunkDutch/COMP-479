@@ -15,11 +15,14 @@ import sys
 
 class Corpus:
 
-    def __init__(self, source):
+    def __init__(self, source, case=True, digits=True, stop=True, stem=True):
         self.path = source
         self.files = [os.path.join(self.path, file) for file in os.listdir(self.path) if file.endswith(".sgm")]
-        self.documents = [doc for doc in self.parse_documents()]
-        self.count = self.get_count()
+        self.case = case
+        self.digits = digits
+        self.stop = stop
+        self.stem = stem
+        self.documents = self.parse_documents()
         # self.save()
 
     def get_count(self):
@@ -34,7 +37,7 @@ class Corpus:
             with open(file, 'rb') as myfile:
                 data = myfile.read()
             for article in Document.parse_tags("REUTERS", data, False):
-                    yield Document(article)
+                    yield Document(article, index=0, case=self.case, digits=self.digits, stem=self.stem, stop=self.stop)
 
     def save(self):
         with open("corpus.pk1", 'wb') as output:
@@ -127,6 +130,7 @@ class Document:
         return output
 
     def tokenize(self):
+        print self.id
         token_list = {}
         stemmer = nltk.PorterStemmer()
         count_list = {}
