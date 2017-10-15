@@ -6,9 +6,8 @@ import argparse
 
 
 class Inverter:
-    def __init__(self, corpus, block_prefix="bl_", file_prefix="f_", block_size=100, block_index=0, out_dir="./blockfiles"):
-        self.documents = corpus.documents
-        self.tokens = self.get_tokens()
+    def __init__(self, tokens, block_prefix="bl_", file_prefix="f_", block_size=100, block_index=0, out_dir="./blockfiles"):
+        self.tokens = iter(tokens)
         self.block_prefix = block_prefix
         self.file_prefix = file_prefix
         self.block_size = block_size
@@ -44,7 +43,7 @@ class Inverter:
                 print "Parsed all tokens in all documents"
                 done = True
 
-            sorted_block = [term for term in sorted(block_dict.keys())]
+            sorted_block = [str(term) for term in sorted(block_dict.keys())]
             block_name = self.block_prefix + str(self.block_index) + ".txt"
             outFile = core.BlockFile(os.path.join(self.out_dir, block_name))
             outFile.open_file(mode="w")
@@ -170,8 +169,8 @@ if __name__ == "__main__":
     # print os.listdir("./blockfiles")
     # bfiles = [os.path.join("./blockfiles", file) for file in sorted(os.listdir("./blockfiles"))]
     corp = core.Corpus("./../Corpus", case=options.case, digits=options.digits, stem=options.stemmer, stop=options.stopwords)
-    # print corp.get_count()
-    invert = Inverter(corp, block_size=options.size)
+    print corp.get_count()
+    invert = Inverter(corp.tokens, block_size=options.size)
     invert.index()
     merger = Merger(invert.blocklist)
     merger.merge()

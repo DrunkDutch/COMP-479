@@ -1,14 +1,14 @@
 Corpus token count
-No compression = 3245575
-case folding only = 3245575
-digits only = 3065587
-digits & stop = 1887266
-Full Compression = 1813690
+No compression = 3205582
+case folding only = 3205582
+digits only = 3025594
+digits & stop = 1773700
+Full Compression = 1773700
 
 
 Corpus Term Count
-No Compression = 3185  38 seconds
-case-folding = 2410 41 seconds
-case & digit = 1639 40 seconds
-case/digit/stop = 2826 6'10"
-Full compression = 2426 7'25"
+No Compression = 97370  30 seconds
+case-folding = 80439 30 seconds
+case & digit = 50828 40 seconds
+case/digit/stop = 50666 4'41"
+Full compression = 39778 6'45"

@@ -24,7 +24,7 @@ class QueryProcessor:
         self.get_index()
         self.get_out_dir()
         self.terms = [self.clean(term) for term in self.terms]
-        self.terms = [x for x in self.terms if x is not None]
+        self.terms = [str(x) for x in self.terms if x is not None]
 
     def clean(self, input):
         output = input
@@ -35,14 +35,14 @@ class QueryProcessor:
         if self.case:
             output = output.lower()
         if self.stop:
-            punctuation = [unicode(x, "utf-8") for x in string.punctuation]
+            punctuation = [str(x) for x in string.punctuation]
             stops = set(nltk.corpus.stopwords.words('english') + punctuation)
             if output in stops:
                 return None
         if self.stem:
             stemmer = nltk.PorterStemmer()
             output = stemmer.stem(output)
-        return output
+        return str(output)
 
     def get_out_dir(self):
         try:
@@ -66,7 +66,7 @@ class QueryProcessor:
         postings = []
         for index, term in enumerate(self.terms):
             try:
-                postings.append(set(self.index[term]))
+                postings.append(set(self.index[str(term)]))
             except KeyError:
                 postings.append(set([]))
         intersection = set.intersection(*postings)
@@ -76,13 +76,14 @@ class QueryProcessor:
         postings = []
         for index, term in enumerate(self.terms):
             try:
-                postings.append(set(self.index[term]))
+                postings.append(set(self.index[str(term)]))
             except KeyError:
                 postings.append(set([]))
         union = set.union(*postings)
         return union
 
     def process_query(self):
+        print "Processing query for terms " + " ".join(self.terms)
         result_list = []
         if self.type is "AND":
             result_list = self.and_query()
@@ -99,7 +100,7 @@ class QueryProcessor:
                 file_name = "reut2-00" + str(corp_file) + ".sgm"
             else:
                 file_name = "reut2-0" + str(corp_file) + ".sgm"
-            with open(os.path.join(self.corpus,file_name), "r") as reut:
+            with open(os.path.join(self.corpus, file_name), "r") as reut:
                 data = reut.read()
             doc_dump = core.Document.parse_tags("REUTERS", data, False)
             for index, doc in enumerate(doc_dump):
@@ -123,7 +124,7 @@ def get_command_line(argv=None):
         parser.add_argument("-d", "--digits", action="store_true")
         parser.add_argument("-c", "--case", action="store_true")
         parser.add_argument("-s", "--stopwords", action="store_true")
-        parser.add_argument("-m", "--stemmer", action="store_true")
+        parser.add_argument("-m", "--stemmer", action="store_true", default=False)
         parser.add_argument("-q", "--query", help="Query Terms to search for")
 
 
@@ -144,8 +145,10 @@ if __name__ == __name__:
         query_type_in = "OR"
     if options.AND:
         query_type_in = "AND"
+    if not options.AND and not options.OR:
+        print "Please select a valid query type"
     q_list = options.query.split(" ")
-    qp = QueryProcessor(query_type=query_type_in, query_list=q_list, digits=options.digits, case=options.case, stop=options.stopwords, stem=options)
-    print len(qp.index.keys())
+    qp = QueryProcessor(query_type=query_type_in, query_list=q_list, digits=options.digits, case=options.case, stop=options.stopwords, stem=options.stemmer)
+    # print len(qp.index.keys())
     qp.process_query()
     print datetime.datetime.now() - now

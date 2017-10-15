@@ -15,7 +15,7 @@ import sys
 
 class Corpus:
 
-    def __init__(self, source, case=True, digits=True, stop=True, stem=True):
+    def __init__(self, source, case=False, digits=False, stop=False, stem=False):
         self.path = source
         self.files = [os.path.join(self.path, file) for file in os.listdir(self.path) if file.endswith(".sgm")]
         self.case = case
@@ -23,6 +23,7 @@ class Corpus:
         self.stop = stop
         self.stem = stem
         self.documents = self.parse_documents()
+        self.tokens = self.get_tokens()
         # self.save()
 
     def get_count(self):
@@ -31,13 +32,21 @@ class Corpus:
             count += doc.count
         return count
 
+    def get_tokens(self):
+        tokens = []
+        for doc in self.documents:
+            tokens.extend(doc.tokens)
+        return tokens
+
     def parse_documents(self):
+        doc = []
         for file in self.files:
             print "Currently parsing articles from file {}", file
             with open(file, 'rb') as myfile:
                 data = myfile.read()
             for article in Document.parse_tags("REUTERS", data, False):
-                    yield Document(article, index=0, case=self.case, digits=self.digits, stem=self.stem, stop=self.stop)
+                    doc.append(Document(article, case=self.case, digits=self.digits, stem=self.stem, stop=self.stop))
+        return doc
 
     def save(self):
         with open("corpus.pk1", 'wb') as output:
@@ -47,7 +56,7 @@ class Corpus:
 class Document:
 
     def __init__(self, source, index=0, case=True, digits=True, stop=True, stem=True):
-        self.raw = self.parse_tags("REUTERS", source, False)[index]
+        self.raw = self.parse_tags("REUTERS", source, False)[0]
         self.id = self.get_id()
         self.topics_places = self.parse_tags("D", self.raw)
         self.text = self.parse_tags("TEXT", self.raw, False)[0]
@@ -59,7 +68,7 @@ class Document:
         self.stop = stop
         self.stem = stem
         self.count = 0
-        self.tokens, self.occurence = self.tokenize()
+        self.tokens = self.tokenize()
 
 
     """
@@ -120,42 +129,35 @@ class Document:
         if self.case:
             output = output.lower()
         if self.stop:
-            punctuation = [unicode(x, "utf-8") for x in string.punctuation]
+            punctuation = [str(x) for x in string.punctuation]
             stops = set(nltk.corpus.stopwords.words('english') + punctuation)
             if output in stops:
                 return None
         if self.stem:
             stemmer = nltk.PorterStemmer()
             output = stemmer.stem(output)
-        return output
+        return str(output)
 
     def tokenize(self):
-        print self.id
-        token_list = {}
-        stemmer = nltk.PorterStemmer()
-        count_list = {}
+        # print self.id
+        token_list = []
         text = [self.body, self.title]
         text.extend(self.topics_places)
-        for section in text:
-            for word in nltk.word_tokenize(section):
-                try:
-                    stemmed_word = self.clean(word)
-                    if stemmed_word is None:
-                        continue
-                    if not isinstance(stemmed_word, unicode):
-                        stemmed_word = unicode(stemmed_word, "utf-8")
-                    if stemmed_word in count_list.keys():
-                        count_list[stemmed_word] = count_list[stemmed_word] + 1
-                    else:
-                        count_list[stemmed_word] = 1
-                    if stemmed_word not in token_list:
-                        token_list[stemmed_word] = self.id
-                    self.count += 1
-                except UnicodeDecodeError:
-                    token_list[word.split(".")[0]] = self.id
-                    self.count += 1
+        text = self.body + self.title
+        word_list = nltk.word_tokenize(text)
+        for word in word_list:
+            try:
+                word = str(word)
+                stemmed_word = self.clean(word)
+                if stemmed_word is None:
+                    continue
+                token_list.append((stemmed_word, self.id))
+                self.count += 1
+            except UnicodeDecodeError:
+                token_list.append((word.split(".")[0],self.id))
+                self.count += 1
         cleaned = token_list
-        return cleaned, collections.OrderedDict(sorted(count_list.items()))
+        return cleaned
 
     def get_tokens(self):
         for token, docid in self.tokens.iteritems():
@@ -174,8 +176,8 @@ class BlockLine:
         return cls(indexes, split_line[0], [int(doc_id) for doc_id in split_line[1:]])
 
     def merge(self, other_bl):
-        new_indexes = sorted(self.indexes + other_bl.indexes)
-        new_postings = sorted(self.postings + other_bl.postings)
+        new_indexes = list(sorted(self.indexes + other_bl.indexes))
+        new_postings = list(set(sorted(self.postings + other_bl.postings)))
         return BlockLine(new_indexes, self.term, new_postings)
 
     def __str__(self):
@@ -240,7 +242,8 @@ install stopwords corpus for nltk to remove stopwords
 
 if __name__ == "__main__":
     now = datetime.datetime.now()
-    corpus = Corpus("./../Corpus")
-    print len(corpus.documents)
-    print corpus.documents[0].tokens
+    corpus = Corpus("./../Corpus", digits=True)
+    # print len(corpus.documents)
+    for index, doc in enumerate(corpus.documents):
+        print index, doc.id
     print datetime.datetime.now() - now
