@@ -1,20 +1,16 @@
-import numpy
 import nltk
 import os
 import re
-import collections
 import string
 import pickle
 import datetime
-import sys
-# reload(sys)
-# sys.setdefaultencoding('utf8')
 
-
-# TODO: Make Stemmer and stopwords optional based on arguments
 
 class Corpus:
-
+    """
+    Wrapper class to handle the parsing of the corpus as a whole, also helps pass compression parameters to the Document
+    class
+    """
     def __init__(self, source, case=False, digits=False, stop=False, stem=False):
         self.path = source
         self.files = [os.path.join(self.path, file) for file in os.listdir(self.path) if file.endswith(".sgm")]
@@ -24,7 +20,6 @@ class Corpus:
         self.stem = stem
         self.documents = self.parse_documents()
         self.tokens = self.get_tokens()
-        # self.save()
 
     def get_count(self):
         count = 0
@@ -39,6 +34,10 @@ class Corpus:
         return tokens
 
     def parse_documents(self):
+        """
+        Iterates over the files in the corpus folder to parse and generate postings pairs
+        :return: List of parsed file objects
+        """
         doc = []
         for file in self.files:
             print "Currently parsing articles from file {}", file
@@ -48,14 +47,10 @@ class Corpus:
                     doc.append(Document(article, case=self.case, digits=self.digits, stem=self.stem, stop=self.stop))
         return doc
 
-    def save(self):
-        with open("corpus.pk1", 'wb') as output:
-            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
-
 
 class Document:
 
-    def __init__(self, source, index=0, case=True, digits=True, stop=True, stem=True):
+    def __init__(self, source, case=True, digits=True, stop=True, stem=True):
         self.raw = self.parse_tags("REUTERS", source, False)[0]
         self.id = self.get_id()
         self.topics_places = self.parse_tags("D", self.raw)
@@ -70,14 +65,13 @@ class Document:
         self.count = 0
         self.tokens = self.tokenize()
 
-
-    """
-    Parser function to find the information contained within the desired tags
-    Strips the tags from strict calls, but retains during non-strict due to regex restrictions
-    on wildcard characters in look-ahead/behind structures
-    """
     @staticmethod
     def parse_tags(tag, source, strict=True):
+        """
+        Parser function to find the information contained within the desired tags
+        Strips the tags from strict calls, but retains during non-strict due to regex restrictions
+        on wildcard characters in look-ahead/behind structures
+        """
         results = []
         try:
             if strict:
@@ -97,11 +91,10 @@ class Document:
         result = re.findall(regex, self.raw)
         return result[0]
 
-
-    """
-    Parser function to return the actual body of the text, stripping away all metadata and tags
-    """
     def get_body(self):
+        """
+        Parser function to return the actual body of the text, stripping away all metadata and tags
+        """
         if self.text.find("<BODY>") != -1:
             return self.text.split("</DATELINE>")[1].split("</BODY>")[0].replace("<BODY>", '')
         if self.text.find("<DATELINE>") != -1:
@@ -111,16 +104,17 @@ class Document:
         else:
             return self.text.split("</TEXT>")[0]
 
-    def cleanup(self, input):
-        dicts = {}
-        punction = [unicode(x, "utf-8") for x in string.punctuation]
-        stops = set(nltk.corpus.stopwords.words('english') + punction)
-        for key in input.keys():
-            if key not in stops:
-                dicts[key] = self.id
-        return dicts
-
     def clean(self, input):
+        """
+        Allows for compression of dictionary based on the parameters passed at construction
+        Options are:
+        Digit removal
+        Case Folding
+        Stopword removal
+        Porter Stemming
+        :param input: Word to be compressed
+        :return: Compressed Word
+        """
         output = input
         if self.digits:
             for s in output:
@@ -139,7 +133,11 @@ class Document:
         return str(output)
 
     def tokenize(self):
-        # print self.id
+        """
+        Parse the raw document and returns the postings for each token
+        Also provides a total count of all tokens found in the document
+        :return: List of postings in the document
+        """
         token_list = []
         text = [self.body, self.title]
         text.extend(self.topics_places)
@@ -154,17 +152,18 @@ class Document:
                 token_list.append((stemmed_word, self.id))
                 self.count += 1
             except UnicodeDecodeError:
-                token_list.append((word.split(".")[0],self.id))
+                token_list.append((word.split(".")[0], self.id))
                 self.count += 1
         cleaned = token_list
         return cleaned
 
-    def get_tokens(self):
-        for token, docid in self.tokens.iteritems():
-            yield token, docid
-
 
 class BlockLine:
+    """
+    Wrapper class to facilitate each line in the block files
+    Without this was causing many issues in regards to merging and variable handling for index movement
+    Wraps the docIds associated with a term, term itself and index of blockfile in list of blockfiles
+    """
     def __init__(self, indexes, term, postings):
         self.indexes = indexes
         self.term = term
@@ -172,20 +171,33 @@ class BlockLine:
 
     @classmethod
     def from_line_entry(cls, indexes, line):
+        """
+        Alternative constructor from string
+        :param indexes: file indexes
+        :param line: raw line from block file
+        :return: BlockLine class instance
+        """
         split_line = line.split(" ")
         return cls(indexes, split_line[0], [int(doc_id) for doc_id in split_line[1:]])
 
     def merge(self, other_bl):
+        """
+        Merge 2 unique objects
+        :param other_bl: Other BlockLine object
+        :return: Merged instance
+        """
         new_indexes = list(sorted(self.indexes + other_bl.indexes))
         new_postings = list(set(sorted(self.postings + other_bl.postings)))
         return BlockLine(new_indexes, self.term, new_postings)
 
     def __str__(self):
-
         return "{} {}\n".format(self.term, " ".join([str(doc_id) for doc_id in self.postings]))
 
 
 class BlockFile:
+    """
+    Wrapper class to handle file actions for Block classes created by the SPIMI inverter
+    """
     def __init__(self, file_path):
         self.file_path = file_path
         self.file_handle = None
@@ -212,29 +224,6 @@ class BlockFile:
     def __str__(self):
         return str(self.file_path)
 
-
-# corpus = []
-# for file in os.listdir("./../Corpus"):
-#     if file.endswith("0.sgm"):
-#         result = os.path.join("./../Corpus", file)
-#         corpus.append(result)
-#
-# with open(corpus[17], 'r') as myfile:
-#     data = myfile.read()
-
-# print len(Document.parse_tags("REUTERS", data, False))
-# documents = []
-# for article in Document.parse_tags("REUTERS", data, False):
-#     documents.append(Document(article))
-#     print documents[-1].id
-
-# try:
-#     with open('corpus.pkl', 'rb') as input:
-#         corpus = pickle.load(input)
-# except IOError:
-#     corpus = Corpus("./../Corpus")
-# finally:
-#     print len(corpus.documents)
 """
 Install punkt package from nltk to be able to tokenize english
 install stopwords corpus for nltk to remove stopwords

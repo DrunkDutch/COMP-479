@@ -9,6 +9,9 @@ import datetime
 
 
 class QueryProcessor:
+    """
+    Wrapper class to handle query processing and result parsing
+    """
 
     def __init__(self, query_type="AND", query_list=[], merge="./merged/mf.txt", corpus="./../Corpus", out_dir=" ./../output", digits=True, case=True, stop=True, stem=True):
         self.type = query_type
@@ -27,6 +30,11 @@ class QueryProcessor:
         self.terms = [str(x) for x in self.terms if x is not None]
 
     def clean(self, input):
+        """
+        Compresses query terms in manner similar to that used by the Corpus processor class @core.Document
+        :param input:
+        :return:
+        """
         output = input
         if self.digits:
             for s in output:
@@ -45,16 +53,24 @@ class QueryProcessor:
         return str(output)
 
     def get_out_dir(self):
+        """
+        Prepares output directory (creates if doesn't exist, and empties if does exist)
+        :return:  None
+        """
         try:
             for f in os.listdir(self.out_dir):
                 if f.endswith(".txt"):
-                    os.remove(os.path.join(self.out_dir,f))
+                    os.remove(os.path.join(self.out_dir, f))
         except Exception:
             print "woops, Couldn't delete folders in output locations"
         if not os.path.exists(self.out_dir):
             os.makedirs(self.out_dir)
 
     def get_index(self):
+        """
+        Populates class with merged spimi index file to allow for in-memory querying
+        :return:
+        """
         in_file = core.BlockFile(self.merge)
         in_file.open_file()
         in_line = in_file.read_line()
@@ -83,6 +99,10 @@ class QueryProcessor:
         return union
 
     def process_query(self):
+        """
+        Wrapper function to call the proper query function and outputs result articles to output_dir
+        :return: List of result articleIds
+        """
         print "Processing query for terms " + " ".join(self.terms)
         result_list = []
         if self.type is "AND":
@@ -90,9 +110,15 @@ class QueryProcessor:
         else:
             result_list = self.or_query()
 
-        self.get_articles(result_list)
+        return self.get_articles(result_list)
 
     def get_articles(self, articles):
+        """
+        Prints out result articles to separate text files in output_dir for ease of usage
+        :param articles: Set of docIds from query result
+        :return: List of Articles
+        """
+        res_list = []
         for article in articles:
             corp_file = article / 1000
             art_index = (article % 1000) - 1
@@ -108,6 +134,8 @@ class QueryProcessor:
                     print "Found result in article {}".format(article)
                     with open(os.path.join(self.out_dir, str(article)+".txt"), "w") as out_file:
                         out_file.write(doc)
+                    res_list.append(article)
+        return sorted(res_list)
 
 
 def get_command_line(argv=None):
@@ -148,7 +176,9 @@ if __name__ == __name__:
     if not options.AND and not options.OR:
         print "Please select a valid query type"
     q_list = options.query.split(" ")
+    print q_list
     qp = QueryProcessor(query_type=query_type_in, query_list=q_list, digits=options.digits, case=options.case, stop=options.stopwords, stem=options.stemmer)
     # print len(qp.index.keys())
-    qp.process_query()
+    res = qp.process_query()
+
     print datetime.datetime.now() - now

@@ -6,33 +6,35 @@ import argparse
 
 
 class Inverter:
-    def __init__(self, tokens, block_prefix="bl_", file_prefix="f_", block_size=100, block_index=0, out_dir="./blockfiles"):
+    def __init__(self, tokens, block_prefix="bl_", block_size=100, block_index=0, out_dir="./blockfiles"):
         self.tokens = iter(tokens)
         self.block_prefix = block_prefix
-        self.file_prefix = file_prefix
-        self.block_size = block_size
+        self.block_size = block_size  # Max block size in MB to simulate memory restrictions
         self.block_index = block_index
         self.out_dir = out_dir
         self.blocklist = []
         self.get_out_dir()
 
-    def get_tokens(self):
-        for document in self.documents:
-            try:
-                yield document.get_tokens().next()
-            except StopIteration:
-                pass
-
     def get_out_dir(self):
+        """
+        Creates output directory for inverted block files
+        :return:
+        """
         if not os.path.exists(self.out_dir):
             os.makedirs(self.out_dir)
 
     def index(self):
+        """
+        Method to actual index the corpus using the SPIMI algorithm
+        Compresses dictionary depending on parameters passed in class constructor
+        Writes blocks to inverted block files in output directory
+        :return:
+        """
         done = False
         while not done:
             block_dict = {}
             try:
-                while sys.getsizeof(block_dict) / 1024 <= self.block_size:
+                while sys.getsizeof(block_dict) / 1024 / 1024 <= self.block_size:
                     token = self.tokens.next()
                     if token[0] not in block_dict:
                         block_dict[token[0]] = list()
@@ -66,12 +68,20 @@ class Merger:
         self.out_file = core.BlockFile(os.path.join(self.out_dir, self.file_name))
 
     def prep_files(self):
+        """
+        Reads all inverted block files to prepare for merger function
+        :return: List of open File classes for block files
+        """
         open_files = []
         for out_file in self.block_files:
             open_files.append(core.BlockFile(out_file))
         return open_files
 
     def prep_output(self):
+        """
+        Deletes merged index file if it already exists in the the output folder
+        :return:
+        """
         try:
             os.remove(os.path.join(self.out_dir, self.file_name))
         except Exception:
@@ -79,22 +89,19 @@ class Merger:
             pass
 
     def get_out_dir(self):
+        """
+        Creates output directory for inverted block files
+        :return:
+        """
         if not os.path.exists(self.out_dir):
             os.makedirs(self.out_dir)
 
-    def merge_posting(self, dic1, dic2):
-        new_postings = []
-        new_postings.extend(dic1)
-        new_postings.extend(dic2)
-        return sorted(set(new_postings))
-
-    def merge_indexes(self, indexes, index):
-        new_indexes = []
-        new_indexes.extend(indexes)
-        new_indexes.append(index)
-        return sorted(set(new_indexes))
-
     def merge(self):
+        """
+        Merger function to create an ordered index file from all the block files that were created to simulate memory restrictions
+        Reads a single line from each file to ensure that actual memory is not exceeded
+        :return:
+        """
         in_files = [f.open_file() for f in self.prep_files()]
         next_lines = [f.read_line() for f in in_files]
         self.out_file.open_file(mode="w")
@@ -110,7 +117,6 @@ class Merger:
                 elif line_obj.term < next_term.term:
                     next_term = line_obj
 
-            # TODO: FIX file indexing to close the proper file
             self.out_file.write_line(next_term)
             new_indexes = next_term.indexes
             new_next_lines = [in_files[index].read_line() for index in new_indexes]
@@ -118,15 +124,15 @@ class Merger:
             for index, new_line in enumerate(new_next_lines):
                 try:
                     if new_line is None:
+                        """
+                        Remove block file that is at EOF
+                        """
                         del(next_lines[new_indexes[index-offset]])
                         print "Closing file " + str(in_files[new_indexes[index-offset]])
                         in_files[new_indexes[index-offset]].close_file()
                         del(in_files[new_indexes[index-offset]])
                         offset += 1
                     else:
-                        # print "Setting new line for index {}".format(new_indexes[index-offset])
-                        # print new_indexes
-                        # print[str(f) for f in in_files]
                         next_lines[new_indexes[index-offset]] = new_line
                 except IndexError:
                     print "{} EXCEPTION with size {}".format(new_line, len(next_lines))
