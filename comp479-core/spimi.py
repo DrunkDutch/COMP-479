@@ -154,11 +154,11 @@ def get_command_line(argv=None):
 
     try:
         parser = argparse.ArgumentParser()
-        parser.add_argument("-d", "--digits", action="store_true")
-        parser.add_argument("-c", "--case", action="store_true")
-        parser.add_argument("-s", "--stopwords", action="store_true")
-        parser.add_argument("-m", "--stemmer", action="store_true")
-        parser.add_argument("-S", "--size", type=int)
+        parser.add_argument("-d", "--digits", action="store_true", help="Enable digit removal dictionary compression")
+        parser.add_argument("-c", "--case", action="store_true", help="Enable case folding dictionary compression")
+        parser.add_argument("-s", "--stopwords", action="store_true", help="Enable stopword removal dictionary compression")
+        parser.add_argument("-m", "--stemmer", action="store_true", help="Enable Porter Stemmer usage for dictionary compression")
+        parser.add_argument("-S", "--size", type=int, help="Block size in MB to simulate memory restrictions")
         arguments = parser.parse_args(argv)
         return arguments
 

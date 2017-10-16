@@ -1,0 +1,338 @@
+The overall approach to my implementation of the SPIMI indexer relies heavily upon a reliance on object-oriented design.
+Almost everything since entity involved with this program has been encapsulated within a unique class, with the primary
+user access-points exposed by the query and spimi python files with common utility classes stored in the core.py file.
+
+#Installation:
+To install the program, simply clone the git repo to the desired folder and run the following command from the root of the main folder to install the required packages:
+pip install -r requirements.txt
+
+#Application Description and Utilization
+
+This application assumes that the user has already downloaded and extracted the proper corpus to a given location located
+in relative proximity to the location of the application. From this point the user calls the spimi.py file with the desired parameters
+to define memory-block size in MB and the various compression techniques (options are: case-folding, digit removal, stopword removal, and Porter stemming).
+
+##Index Creation:
+Example commandline:python spimi.py -S 2000 -c -d -m -s
+HELP DIALOG
+  -h, --help            show this help message and exit
+  -d, --digits          Enable digit removal dictionary compression
+  -c, --case            Enable case folding dictionary compression
+  -s, --stopwords       Enable stopword removal dictionary compression
+  -m, --stemmer         Enable Porter Stemmer usage for dictionary compression
+  -S SIZE, --size SIZE  Block size in MB to simulate memory restrictions
+
+
+Once the program begins execution it finds all files with the .sgm file type in the targeted corpus folder and begins iteratively parsing each file into its component articles,
+which are represented by Document class objects. These objects parse the entirety of the article during construction, extracting the article Id,
+topics and places,title, dateline and body via regular expression searching using the well-defined xml style tags as defined by the lewis.dtd file included with the Corpus.
+
+The documents are tokenized using the nltk.word_tokenize function with the results then passed through the clean() function that
+reads the various parameter flags to determine which filters to apply to the resulting word before passing it on to create token,docId posting pairs.
+The ensuing Document objects are encapsulated within a Corpus object which exists purely to store the the various Document objects as well as the file path
+to the corpus as well as the compression parameters.
+
+Once parsing is completed the Inverter object defined in the spimi.py file transforms the list of postings contained in the Corpus class into an iterator
+and begins the inversion part of the algorithm. This is done via the index function that simply iterates over the token iterator
+and creates a dictionary with the terms as keys with each docId in a posting appended to the list that represents the value paired to the key.
+This dictionary is size constricted via the input parameter, with the dictionary being written to a new blockfile when the size limit is reached.
+The process is completed until the token iterator is emptied.
+
+From this point the Merger class is passed the list of blockfiles created by the inverter and begins the merger of all the block files into
+a sorted master index file. This is done via the readline() iterator function native to python to return an iterator for each file.
+This is to prevent filesystem and memory issues from arising from reading multiple files at the same time and allows us to step through
+the files only when required. This is done via the BlockLine and BlockFile classes that contain helper functions to control the creation and merging
+of each line entry to the master index file in a manner that prevents variable clutter that was observed early on in the development of this program.
+This merger writes the sorted index file on a term by term basis to also prevent holding too many inverted indexes in memory at a given time.
+
+Term Compression Table:
+Each row also uses the compression parameter of hte rows above
+
+Compression Technique|Token Count| Diff from Previous| Term Count| Diff from Previous| Execution Time|
+No Compression | 3205582| N/A | 97370 | N/A | 28 seconds
+Case-Folding | 3205582 | 0% | 80439 | -17% | 29 seconds
+Digit-Removal | 3025594 | -5.5% | 50828 | -37% | 40 seconds
+Stopword-Removal | 1773700 | -42% | 50666 | -.5% | 4 Minutes 41 seconds
+Porter Stemming | 1773700 | 0% | 39778 | -21.5% | 6 Minutes 45 seconds
+
+
+##Query Processing:
+Example commandline:python query.py -o -q "Saskatchewan Quebec" -d -c -s
+HELP DIALOG:
+  -h, --help            show this help message and exit
+  -a, --AND             Choose AND type query, if used with -o or --OR
+                        parameter, supercedes it
+  -o, --OR              Choose OR type query, if used with -a or --AND
+                        parameter, is superceded by it
+  -d, --digits          Enable digit removal on query terms
+  -c, --case            Enable case folding on query terms
+  -s, --stopwords       Enable stopword removal on query terms
+  -m, --stemmer         Enable Porter Stemming on query terms
+  -q QUERY, --query QUERY
+                        Query Terms to search for, in the form "TERM TERM",
+                        with each term separated by a space, and/or terms are
+                        not required unless they are actual query terms
+
+
+The query processor operates as a very simple script that splits the query terms and applies the required filter parameters.
+The terms are then searched for in the master index file created by the Inverter class as described above and returns all docIds for each term.
+These lists are then merged as appropriate based on the type of query (AND or OR), using either the builtin union or intersection methods provided by python.
+The resulting set of docIds is then used to extract the articles with the desired ids from the raw corpus files. These articles
+are then written to unique text files of the form {docID}.txt in the output folder to allow for ease of use for the user. The docIds are also printed
+to the console to give the user a broad sense of the number of resulting articles for the query.
+
+Example Queries:
+The following Queries were executed against an index created using case-folding, digit-removal and stopword removal compressions.
+San or Carter:
+10058
+10252
+10460
+10558
+10662
+10691
+10811
+10998
+11042
+11114
+11118
+11133
+11330
+11389
+11533
+11863
+12066
+12072
+12136
+12160
+12209
+12277
+12443
+12531
+12667
+12677
+13145
+13147
+1316
+13235
+1347
+13540
+13877
+1402
+14888
+14921
+14938
+15158
+15240
+15274
+15443
+15467
+15473
+15484
+15699
+1582
+15946
+16071
+16235
+16887
+17023
+17325
+17363
+17490
+17560
+17676
+17680
+17719
+1789
+17974
+18005
+18075
+18101
+18138
+18157
+18196
+18341
+18342
+18438
+18962
+19038
+19205
+19432
+19828
+1988
+19890
+19896
+1993
+19950
+20236
+20250
+20614
+20897
+2128
+21291
+21292
+21308
+215
+2389
+2444
+2447
+2534
+2740
+3038
+3055
+316
+3281
+3367
+3380
+3400
+3521
+3561
+367
+3677
+3725
+3805
+3981
+3992
+4181
+4425
+4590
+4622
+4730
+4925
+4934
+5094
+5163
+5226
+5465
+5525
+5609
+5719
+5730
+6278
+6340
+641
+67
+6766
+7040
+7050
+7052
+7061
+7144
+725
+7306
+7366
+7781
+7840
+7995
+805
+8085
+8091
+8130
+8237
+8352
+854
+863
+8886
+8914
+965
+9721
+979
+9826
+9918
+9932
+
+President AND Carter
+10252
+11118
+11330
+13540
+16887
+17023
+17325
+17363
+18005
+19432
+20614
+5465
+854
+965
+
+Quebec
+1072
+1082
+11157
+11303
+11454
+11624
+11910
+12199
+12420
+12489
+12641
+12651
+12963
+13757
+14642
+14728
+14730
+14871
+14902
+15166
+15623
+15932
+15988
+1607
+17622
+17632
+17855
+17856
+17995
+18093
+18217
+18252
+18671
+18673
+18715
+18730
+18868
+19126
+19225
+19717
+1992
+19937
+19959
+20790
+20946
+21004
+21338
+21341
+2646
+2655
+2782
+2880
+3160
+3625
+3704
+3898
+3962
+4073
+414
+421
+4222
+4242
+4354
+5512
+6207
+6742
+7424
+7476
+7724
+7737
+79
+838
+8482
+8948
+9642
+
+TODO INSERT COMPARISONS WITH CAIO AND ERIC
+
+

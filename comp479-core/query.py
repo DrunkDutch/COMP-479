@@ -146,15 +146,19 @@ def get_command_line(argv=None):
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument("-a", "--AND",
-                            help="Choose AND type query, if used with -o or --OR parameter, supercedes it", action="store_true")
+                            help="Choose AND type query, if used with -o or --OR parameter, supercedes it",
+                            action="store_true")
         parser.add_argument("-o", "--OR",
-                            help="Choose OR type query, if used with -a or --AND parameter, is superceded by it", action="store_true")
-        parser.add_argument("-d", "--digits", action="store_true")
-        parser.add_argument("-c", "--case", action="store_true")
-        parser.add_argument("-s", "--stopwords", action="store_true")
-        parser.add_argument("-m", "--stemmer", action="store_true", default=False)
-        parser.add_argument("-q", "--query", help="Query Terms to search for")
-
+                            help="Choose OR type query, if used with -a or --AND parameter, is superceded by it",
+                            action="store_true")
+        parser.add_argument("-d", "--digits", action="store_true", help="Enable digit removal on query terms")
+        parser.add_argument("-c", "--case", action="store_true", help="Enable case folding on query terms")
+        parser.add_argument("-s", "--stopwords", action="store_true", help="Enable stopword removal on query terms")
+        parser.add_argument("-m", "--stemmer", action="store_true", default=False,
+                            help="Enable Porter Stemming on query terms")
+        parser.add_argument("-q", "--query", help="Query Terms to search for, in the form \"TERM TERM\", with each term"
+                                                  " separated by a space, and/or terms are not required unless they are"
+                                                  " actual query terms")
 
         arguments = parser.parse_args(argv)
         return arguments
