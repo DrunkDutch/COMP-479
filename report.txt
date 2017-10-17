@@ -1,3 +1,12 @@
+I hereby certify that this submission is my original work and meets the Faculty's expectations of originality
+(Signature for this statement is included with the full Expectations of Originality form submitted with this submission)
+
+
+COMP 479 Assignment 1 Report
+Devin Mens
+26290515
+16/10/17
+
 The overall approach to my implementation of the SPIMI indexer relies heavily upon a reliance on object-oriented design.
 Almost everything since entity involved with this program has been encapsulated within a unique class, with the primary
 user access-points exposed by the query and spimi python files with common utility classes stored in the core.py file.
@@ -344,7 +353,19 @@ Quebec
 8948
 9642
 
-TODO INSERT COMPARISONS WITH CAIO AND ERIC
+
+Caio Palva Query Comparisons:
+Quebec: No differences
+President AND Carter: No difference
+San OR Carter: article 3400 was present in mine but not in Caio's results(No idea why), there was a large amount of results that were in his but not mine. This is most likely due to the fact that
+I believe that Caio adds more meta data from the articles into his index that I do not. Either that or one of us has a really big bug in our code
+
+Eric Differences: Should be noted though that these results are from an index that only used digit removal as its compression
+technique
+Quebec: Only a few missing results.
+San OR Carter: Only 3 results are not included in Eric's result list compared to mine, this is most likely due to
+President AND Carter: Also missing only a couple of results
+
 
 #Sample Queries:
 Done with case folding, digit and stopwords
