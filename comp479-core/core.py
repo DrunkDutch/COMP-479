@@ -2,7 +2,7 @@ import nltk
 import os
 import re
 import string
-import pickle
+import cPickle as pickle
 import datetime
 
 
@@ -20,6 +20,7 @@ class Corpus:
         self.stem = stem
         self.documents = self.parse_documents()
         self.tokens = self.get_tokens()
+        self.save()
 
     def get_count(self):
         count = 0
@@ -46,6 +47,43 @@ class Corpus:
             for article in Document.parse_tags("REUTERS", data, False):
                     doc.append(Document(article, case=self.case, digits=self.digits, stem=self.stem, stop=self.stop))
         return doc
+
+    def save(self):
+        num_documents = len(self.documents)
+        num_tokens = self.get_count()
+        doc_length = float(num_tokens/num_documents)
+        pickle_corpus = SerialCorpus(num_documents, num_tokens, doc_length, self.documents)
+        pickle_corpus.save()
+        corp = SerialCorpus.load("corpus_pickle.pk1")
+        print corp
+
+
+class SerialCorpus:
+    """
+    Data class written to handle serialization of the Corpus class. Created due to issues found when trying to pickle
+    the original Corpus class
+    """
+    def __init__(self, num_documents=0, num_tokens=0, doc_length=0.0, documents=[]):
+        self.doc_count = num_documents
+        self.token_count = num_tokens
+        self.doc_length = float(doc_length)
+        self.documents = dict()
+        self.populate(documents)
+
+    def populate(self, documents):
+        for doc in documents:
+            self.documents[doc.id] = (doc.id, doc.count)
+
+    def save(self):
+        with open("corpus_pickle.pk1", 'wb') as dill:
+            pickle.dump(self, dill, pickle.HIGHEST_PROTOCOL)
+
+    @classmethod
+    def load(cls, fileIn):
+        return pickle.load(open(fileIn, 'rb'))
+
+    def __str__(self):
+        return "Number of Documents = " + str(self.doc_count) + "\n" + "Number of Tokens = " + str(self.token_count) + "\n" + "Average Document length = " + str(self.doc_length)
 
 
 class Document:
@@ -231,8 +269,10 @@ install stopwords corpus for nltk to remove stopwords
 
 if __name__ == "__main__":
     now = datetime.datetime.now()
-    corpus = Corpus("./../Corpus", digits=True)
-    # print len(corpus.documents)
-    for index, doc in enumerate(corpus.documents):
-        print index, doc.id
+    corp = SerialCorpus.load("corpus_pickle.pk1")
+    print corp
+    # corpus = Corpus("./../Corpus", digits=True)
+    # # print len(corpus.documents)
+    # for index, doc in enumerate(corpus.documents):
+    #     print index, doc.id
     print datetime.datetime.now() - now
