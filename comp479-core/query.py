@@ -1,4 +1,5 @@
 import core
+import operator
 import spimi
 import os
 import sys
@@ -6,14 +7,18 @@ import argparse
 import nltk
 import string
 import datetime
+from collections import defaultdict
+from math import log10
 
 
 class QueryProcessor:
     """
     Wrapper class to handle query processing and result parsing
     """
+    B_WEIGHT = 1.6
+    K_WEIGHT = 0.75
 
-    def __init__(self, query_type="AND", query_list=[], merge="./merged/mf.txt", corpus="./../Corpus", out_dir=" ./../output", digits=True, case=True, stop=True, stem=True):
+    def __init__(self, query_type="AND", query_list=[], merge="./merged/mf.txt", corpus="./../Corpus", out_dir=" ./../output", digits=True, case=True, stop=True, stem=True, metacorp = "corpus_pickle.pk1"):
         self.type = query_type
         self.terms = query_list
         self.merge = merge
@@ -23,6 +28,7 @@ class QueryProcessor:
         self.case = case
         self.stop = stop
         self.stem = stem
+        self.meta_info = core.SerialCorpus.load(metacorp)
         self.index = {}
         self.get_index()
         self.get_out_dir()
@@ -80,23 +86,51 @@ class QueryProcessor:
 
     def and_query(self):
         postings = []
+        doc_weight = {}
+        idf_values = {}
         for index, term in enumerate(self.terms):
             try:
                 postings.append(set(self.index[str(term)]))
+                idf_values[str(term)] = self.get_idf(list(set(self.index[str(term)])))
+                document_list = set(self.index[str(term)])
+                for docId in sorted(document_list):
+                    frequency = self.get_document_freq(str(term), docId)
+                    if str(docId) not in doc_weight:
+                        doc_weight[str(docId)] = self.calculate_score(idf_values[str(term)], frequency, docId)
+                    else:
+                        doc_weight[str(docId)] += self.calculate_score(idf_values[str(term)], frequency, docId)
             except KeyError:
                 postings.append(set([]))
         intersection = set.intersection(*postings)
-        return intersection
+        returnDict = {}
+        for key in doc_weight.keys():
+            if int(key) in intersection:
+                returnDict[key] = doc_weight[key]
+        return sorted(returnDict.items(), key=operator.itemgetter(1), reverse=True)
 
     def or_query(self):
         postings = []
+        doc_weight = {}
+        idf_values = {}
         for index, term in enumerate(self.terms):
             try:
                 postings.append(set(self.index[str(term)]))
+                idf_values[str(term)] = self.get_idf(list(set(self.index[str(term)])))
+                document_list = set(self.index[str(term)])
+                for docId in sorted(document_list):
+                    frequency = self.get_document_freq(str(term), docId)
+                    if str(docId) not in doc_weight:
+                        doc_weight[str(docId)] = self.calculate_score(idf_values[str(term)], frequency, docId)
+                    else:
+                        doc_weight[str(docId)] += self.calculate_score(idf_values[str(term)], frequency, docId)
             except KeyError:
                 postings.append(set([]))
         union = set.union(*postings)
-        return union
+        returnDict = {}
+        for key in doc_weight.keys():
+            if int(key) in union:
+                returnDict[key] = doc_weight[key]
+        return sorted(returnDict.items(), key=operator.itemgetter(1), reverse=True)
 
     def process_query(self):
         """
@@ -120,6 +154,7 @@ class QueryProcessor:
         """
         res_list = []
         for article in articles:
+            article = int(article[0])
             corp_file = article / 1000
             art_index = (article % 1000) - 1
             if corp_file < 10:
@@ -136,6 +171,16 @@ class QueryProcessor:
                         out_file.write(doc)
                     res_list.append(article)
         return sorted(res_list)
+
+    def get_idf(self, postings):
+        return log10((self.meta_info.doc_count-len(postings)+0.5)/(len(postings)+0.5))
+
+    def get_document_freq(self, term, docId):
+        return self.index[str(term)].count(docId)
+
+    def calculate_score(self, idf_score, frequency, docId):
+        return idf_score * ((frequency*(QueryProcessor.K_WEIGHT+1))/(frequency+QueryProcessor.K_WEIGHT*(1-QueryProcessor.B_WEIGHT + QueryProcessor.B_WEIGHT*(self.meta_info.documents[str(docId)][1]/self.meta_info.doc_length))))
+
 
 
 def get_command_line(argv=None):

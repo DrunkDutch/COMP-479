@@ -270,7 +270,7 @@ install stopwords corpus for nltk to remove stopwords
 if __name__ == "__main__":
     now = datetime.datetime.now()
     corp = SerialCorpus.load("corpus_pickle.pk1")
-    print corp
+    print corp.documents['67']
     # corpus = Corpus("./../Corpus", digits=True)
     # # print len(corpus.documents)
     # for index, doc in enumerate(corpus.documents):
