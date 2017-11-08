@@ -1,4 +1,33 @@
-['Democrats\x92', 'welfare', 'and', 'healthcare', 'reform', 'policies']   14 seconds
+I hereby certify that this submission is my original work and meets the Faculty's expectations of originality
+(Signature for this statement is included with the full Expectations of Originality form submitted with this submission)
+
+
+COMP 479 Assignment 2 Report
+Devin Mens
+26290515
+08/11/17
+
+This second assignment was a rather straight forward task Building off of the heavy object oriented design from the first assignment,
+the implementation of the functionality. For the core of the code, the only addition was the implementation of a lightweight
+class to handle the metadata of the corpus as well as the documents in a manner that did allow for easy serialization to make the calculation
+of the BM25 algorithm feasible. The only other addition to the code was done in the query handler section, where the actual mechanics of the BM25
+algorithm were implemented via the addition of 3 helper functions to calculate the IDF value for a term, the actual BM25 score as well as a simple
+getter function to simplify retrieval of document frequency for a term from the aforementioned metadata. These results were then sorted by relevance via BM25 score
+and the resulting list passed to the original method to retrieve the actual document from the Corpus in an ordered manner.
+
+The entirety of this was done successfully in a single attempt, as such there is no need to provide any information on aborted designs.
+
+For the sake of brevity and the fact that no other changes were made to the program, this report will assume that any information not contained within this report
+can be found in the original report for the first submission.
+
+Following below are some of the results from the sample queries provided in the assignment description
+These are not complete result lists since in some cases a very large amount of results. The cutoff for inclusion into this list was a BM25 score of roughly 3.
+All of these queries were made using the "OR" parameter of the query handler to more closely resemble complex phrases that do not explicitly require 100 matches.
+While 2 of the 3 queries returned the complete result list in a minimal amount of time, in the case of the second query it took close to 2 minutes to return
+the complete list. As such this query had the most results not included. All queries were done against a corpus that had been indexed using the full extent
+of compression tools available to this application with the same compression applied to the query as well.
+
+['Democrats\x92', 'welfare', 'and', 'healthcare', 'reform', 'policies']   Took 14 seconds
 Processing query for terms democrats� welfare healthcare reform policies
 Found result in article 19133 with score 5.27546217918
 Found result in article 535 with score 5.27546217918
