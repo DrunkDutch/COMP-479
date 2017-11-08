@@ -154,6 +154,7 @@ class QueryProcessor:
         """
         res_list = []
         for article in articles:
+            score = article[1]
             article = int(article[0])
             corp_file = article / 1000
             art_index = (article % 1000) - 1
@@ -166,7 +167,7 @@ class QueryProcessor:
             doc_dump = core.Document.parse_tags("REUTERS", data, False)
             for index, doc in enumerate(doc_dump):
                 if index == art_index:
-                    print "Found result in article {}".format(article)
+                    print "Found result in article {} with score {}".format(article, score)
                     with open(os.path.join(self.out_dir, str(article)+".txt"), "w") as out_file:
                         out_file.write(doc)
                     res_list.append(article)
