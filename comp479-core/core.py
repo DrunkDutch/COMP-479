@@ -202,10 +202,12 @@ class BlockLine:
     Without this was causing many issues in regards to merging and variable handling for index movement
     Wraps the docIds associated with a term, term itself and index of blockfile in list of blockfiles
     """
-    def __init__(self, indexes, term, postings):
+    def __init__(self, indexes, term, postings, score=0):
         self.indexes = indexes
         self.term = term
         self.postings = postings
+        self.score = score
+        self.df = len(set(self.postings))
 
     @classmethod
     def from_line_entry(cls, indexes, line):
@@ -267,6 +269,7 @@ Install punkt package from nltk to be able to tokenize english
 install stopwords corpus for nltk to remove stopwords
 """
 
+# TODO parse the sentiment analysis file into dictionary based on compression technique
 if __name__ == "__main__":
     now = datetime.datetime.now()
     corp = SerialCorpus.load("corpus_pickle.pk1")
