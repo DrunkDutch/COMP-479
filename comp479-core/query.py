@@ -37,6 +37,16 @@ class QueryProcessor:
         self.terms = [self.clean(term) for term in self.terms]
         self.terms = [str(x) for x in self.terms if x is not None]
         self.sentiments = pickle.load(open(sentiment, "rb"))
+        self.score = self.get_score()
+
+    def get_score(self):
+        score = 0
+        for term in self.terms:
+            if term in self.sentiments:
+                score += self.sentiments[term]
+        return score
+
+
 
     def clean(self, input):
         """
@@ -111,7 +121,10 @@ class QueryProcessor:
         for key in doc_weight.keys():
             if int(key) in intersection:
                 returnDict[key] = doc_weight[key]
-        return sorted(returnDict.items(), key=operator.itemgetter(1), reverse=True)
+        if self.score >= 0:
+            return sorted(returnDict.items(), key=operator.itemgetter(1), reverse=True)
+        else:
+            return sorted(returnDict.items(), key=operator.itemgetter(1))
 
     def or_query(self):
         postings = []
@@ -141,7 +154,10 @@ class QueryProcessor:
         for key in doc_weight.keys():
             if int(key) in union:
                 returnDict[key] = doc_weight[key]
-        return sorted(returnDict.items(), key=operator.itemgetter(1), reverse=True)
+        if self.score >= 0:
+            return sorted(returnDict.items(), key=operator.itemgetter(1), reverse=True)
+        else:
+            return sorted(returnDict.items(), key=operator.itemgetter(1))
 
     def process_query(self):
         """
@@ -239,7 +255,9 @@ if __name__ == __name__:
     q_list = options.query.split(" ")
     print q_list
     qp = QueryProcessor(query_type=query_type_in, query_list=q_list, digits=options.digits, case=options.case, stop=options.stopwords, stem=options.stemmer)
+    print qp.score
     # print len(qp.index.keys())
     res = qp.process_query()
+
 
     print datetime.datetime.now() - now
