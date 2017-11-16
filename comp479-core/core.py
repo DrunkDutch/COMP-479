@@ -22,6 +22,7 @@ class Corpus:
         self.sentiment = self.get_sentiment()
         self.documents = self.parse_documents()
         self.tokens = self.get_tokens()
+        self.score = sum([document.score for document in self.documents])
         self.save()
 
     def get_sentiment(self):
