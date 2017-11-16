@@ -69,7 +69,7 @@ class Corpus:
         num_documents = len(self.documents)
         num_tokens = self.get_count()
         doc_length = float(num_tokens/num_documents)
-        pickle_corpus = SerialCorpus(num_documents, num_tokens, doc_length, self.documents)
+        pickle_corpus = SerialCorpus(num_documents, num_tokens, doc_length, self.documents, self.score)
         pickle_corpus.save()
         corp = SerialCorpus.load("corpus_pickle.pk1")
         print corp
@@ -108,12 +108,13 @@ class SerialCorpus:
     Data class written to handle serialization of the Corpus class. Created due to issues found when trying to pickle
     the original Corpus class
     """
-    def __init__(self, num_documents=0, num_tokens=0, doc_length=0.0, documents=[]):
+    def __init__(self, num_documents=0, num_tokens=0, doc_length=0.0, documents=[], score=0):
         self.doc_count = num_documents
         self.token_count = num_tokens
         self.doc_length = float(doc_length)
         self.documents = dict()
         self.populate(documents)
+        self.score = score
 
     def populate(self, documents):
         for doc in documents:
