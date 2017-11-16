@@ -1,4 +1,5 @@
 import core
+from core import SerialCorpus
 import operator
 import spimi
 import os
@@ -9,6 +10,7 @@ import string
 import datetime
 from collections import defaultdict
 from math import log10
+import cPickle as pickle
 
 
 class QueryProcessor:
@@ -18,7 +20,7 @@ class QueryProcessor:
     B_WEIGHT = 1.6
     K_WEIGHT = 0.75
 
-    def __init__(self, query_type="AND", query_list=[], merge="./merged/mf.txt", corpus="./../Corpus", out_dir=" ./../output", digits=True, case=True, stop=True, stem=True, metacorp = "corpus_pickle.pk1"):
+    def __init__(self, query_type="AND", query_list=[], merge="./merged/mf.txt", corpus="./../Corpus", out_dir=" ./../output", digits=True, case=True, stop=True, stem=True, metacorp="corpus_pickle.pk1", sentiment="senti.pk1"):
         self.type = query_type
         self.terms = query_list
         self.merge = merge
@@ -28,12 +30,13 @@ class QueryProcessor:
         self.case = case
         self.stop = stop
         self.stem = stem
-        self.meta_info = core.SerialCorpus.load(metacorp)
+        self.meta_info = SerialCorpus.load(metacorp)
         self.index = {}
         self.get_index()
         self.get_out_dir()
         self.terms = [self.clean(term) for term in self.terms]
         self.terms = [str(x) for x in self.terms if x is not None]
+        self.sentiments = pickle.load(open(sentiment, "rb"))
 
     def clean(self, input):
         """
@@ -80,8 +83,10 @@ class QueryProcessor:
         in_file = core.BlockFile(self.merge)
         in_file.open_file()
         in_line = in_file.read_line()
+        term = core.Term(in_line.term, in_line.score, in_line.df)
         while in_line:
-            self.index[in_line.term] = in_line.postings
+            term = core.Term(in_line.term, in_line.score, in_line.df)
+            self.index[term] = in_line.postings
             in_line = in_file.read_line()
 
     def and_query(self):
@@ -90,9 +95,9 @@ class QueryProcessor:
         idf_values = {}
         for index, term in enumerate(self.terms):
             try:
-                postings.append(set(self.index[str(term)]))
-                idf_values[str(term)] = self.get_idf(list(set(self.index[str(term)])))
-                document_list = set(self.index[str(term)])
+                postings.append(set(self.index[term]))
+                idf_values[term] = self.get_idf(list(set(self.index[term])))
+                document_list = set(self.index[term])
                 for docId in sorted(document_list):
                     frequency = self.get_document_freq(str(term), docId)
                     if str(docId) not in doc_weight:
@@ -112,17 +117,23 @@ class QueryProcessor:
         postings = []
         doc_weight = {}
         idf_values = {}
-        for index, term in enumerate(self.terms):
+        sentiment_score = {}
+        for index, termi in enumerate(self.terms):
             try:
-                postings.append(set(self.index[str(term)]))
-                idf_values[str(term)] = self.get_idf(list(set(self.index[str(term)])))
-                document_list = set(self.index[str(term)])
+                if termi in self.sentiments:
+                    score = self.sentiments[termi]
+                else:
+                    score = 0
+                term = core.Term(termi, score)
+                postings.append(set(self.index[term]))
+                idf_values[term] = self.get_idf(list(set(self.index[term])))
+                document_list = set(self.index[term])
                 for docId in sorted(document_list):
-                    frequency = self.get_document_freq(str(term), docId)
+                    frequency = self.get_document_freq(term, docId)
                     if str(docId) not in doc_weight:
-                        doc_weight[str(docId)] = self.calculate_score(idf_values[str(term)], frequency, docId)
+                        doc_weight[str(docId)] = self.calculate_score(idf_values[term], frequency, docId)
                     else:
-                        doc_weight[str(docId)] += self.calculate_score(idf_values[str(term)], frequency, docId)
+                        doc_weight[str(docId)] += self.calculate_score(idf_values[term], frequency, docId)
             except KeyError:
                 postings.append(set([]))
         union = set.union(*postings)
@@ -177,11 +188,11 @@ class QueryProcessor:
         return log10((self.meta_info.doc_count-len(postings)+0.5)/(len(postings)+0.5))
 
     def get_document_freq(self, term, docId):
-        return self.index[str(term)].count(docId)
+        return self.index[term].count(docId)
 
     def calculate_score(self, idf_score, frequency, docId):
-        return idf_score * ((frequency*(QueryProcessor.K_WEIGHT+1))/(frequency+QueryProcessor.K_WEIGHT*(1-QueryProcessor.B_WEIGHT + QueryProcessor.B_WEIGHT*(self.meta_info.documents[str(docId)][1]/self.meta_info.doc_length))))
-
+        # return idf_score * ((frequency*(QueryProcessor.K_WEIGHT+1))/(frequency+QueryProcessor.K_WEIGHT*(1-QueryProcessor.B_WEIGHT + QueryProcessor.B_WEIGHT*(self.meta_info.documents[str(docId)][1]/self.meta_info.doc_length))))
+        return self.meta_info.documents[str(docId)][2]
 
 
 def get_command_line(argv=None):

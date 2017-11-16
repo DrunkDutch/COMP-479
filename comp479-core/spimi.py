@@ -3,10 +3,11 @@ import sys
 import os
 import datetime
 import argparse
+import cPickle as pickle
 
 
 class Inverter:
-    def __init__(self, tokens, block_prefix="bl_", block_size=100, block_index=0, out_dir="./blockfiles"):
+    def __init__(self, tokens, block_prefix="bl_", block_size=100, block_index=0, out_dir="./blockfiles", senti_loc="senti.pk1"):
         self.tokens = iter(tokens)
         self.block_prefix = block_prefix
         self.block_size = block_size  # Max block size in MB to simulate memory restrictions
@@ -14,6 +15,7 @@ class Inverter:
         self.out_dir = out_dir
         self.blocklist = []
         self.get_out_dir()
+        self.sentiments = pickle.load(open(senti_loc, 'rb'))
 
     def get_out_dir(self):
         """
@@ -36,22 +38,27 @@ class Inverter:
             try:
                 while sys.getsizeof(block_dict) / 1024 / 1024 <= self.block_size:
                     token = self.tokens.next()
-                    if token[0] not in block_dict:
-                        block_dict[token[0]] = list()
-                        block_dict[token[0]].append(token[1])
+                    if token[0] in self.sentiments:
+                        score = self.sentiments[token[0]]
                     else:
-                        block_dict[token[0]].append(token[1])
+                        score = 0
+                    term = core.Term(token[0], score)
+                    if term not in block_dict:
+                        block_dict[term] = list()
+                        block_dict[term].append(token[1])
+                    else:
+                        block_dict[term].append(token[1])
             except StopIteration:
                 print "Parsed all tokens in all documents"
                 done = True
 
-            sorted_block = [str(term) for term in sorted(block_dict.keys())]
+            sorted_block = [termi for termi in sorted(block_dict.keys())]
             block_name = self.block_prefix + str(self.block_index) + ".txt"
             outFile = core.BlockFile(os.path.join(self.out_dir, block_name))
             outFile.open_file(mode="w")
             for element in sorted_block:
                 docids = " ".join(str(doc) for doc in block_dict[element])
-                outString = element + " " + docids
+                outString = str(element) + " " + docids
                 outFile.write_line(outString + "\n")
             outFile.close_file()
             self.block_index += 1
